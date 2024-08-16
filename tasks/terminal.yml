@@ -1,7 +1,7 @@
 ---
 # Custom Terminal theme.
 - name: Get current Terminal profile.
-  command: defaults read com.apple.terminal 'Default Window Settings'
+  command: defaults read com.apple.Terminal 'Default Window Settings'
   register: terminal_theme
   changed_when: false
   check_mode: false
