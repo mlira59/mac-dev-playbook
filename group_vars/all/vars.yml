@@ -1,0 +1,9 @@
+---
+# Non-sensitive variables that reference vault secrets
+# This file is NOT encrypted and can be committed to git
+
+# Reference secrets from vault (loaded separately when vault is available)
+# Using default(omit) so playbook works without vault for VM testing
+ansible_become_password: "{{ vault_ansible_become_password | default(omit) }}"
+mas_email: "{{ vault_mas_email | default(omit) }}"
+mas_password: "{{ vault_mas_password | default(omit) }}"

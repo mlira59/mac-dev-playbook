@@ -1,0 +1,19 @@
+---
+- name: Allow hidden files to be visible
+  ansible.builtin.command:
+    cmd: defaults write com.apple.Finder AppleShowAllFiles true;
+  changed_when: false
+
+- name: Set default view to list
+  ansible.builtin.shell:
+    cmd: defaults write com.apple.finder "FXPreferredViewStyle" -string "Nlsv";
+  changed_when: false
+
+- name: Allow hidden files to be visible
+  ansible.builtin.command:
+    cmd: killall Finder;
+  changed_when: false
+  ignore_errors: true
+
+# systemsetup -setremotelogin on
+# libreoffice? brew cask

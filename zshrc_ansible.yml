@@ -1,0 +1,17 @@
+---
+# Only run on local machine where the ansible venv exists
+- name: Check if ansible virtual environment exists
+  ansible.builtin.stat:
+    path: ~/.local/environments/ansiblep313/bin/activate
+  register: ansible_venv
+
+- name: Add current ansible virtual environment information
+  ansible.builtin.blockinfile:
+    path: ~/.zshrc
+    create: yes
+    mode: '0644'
+    block: |
+      source ~/.local/environments/ansiblep313/bin/activate;
+    marker: "# {mark} ANSIBLE virtual PATH"
+  when: ansible_venv.stat.exists
+...

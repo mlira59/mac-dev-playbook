@@ -1,0 +1,5 @@
+# This file contains ignores rule violations for ansible-lint
+roles/elliotweiser.osx-command-line-tools/defaults/main.yml yaml[truthy]
+roles/elliotweiser.osx-command-line-tools/tasks/main.yml name[casing]
+roles/elliotweiser.osx-command-line-tools/tasks/main.yml yaml[truthy]
+tasks/sudoers.yml yaml[octal-values]

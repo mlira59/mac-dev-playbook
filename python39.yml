@@ -1,0 +1,9 @@
+---
+- name: Maintain original Python 3.9
+  ansible.builtin.blockinfile:
+    path: ~/.zshrc
+    block: |
+      PATH=${HOME}/Library/Python/3.9/bin:${PATH}
+    marker: "# {mark} ANSIBLE MANAGED BLOCK python39"
+  when: inventory_hostname == 'Martins-MacBook-Pro.local'
+...

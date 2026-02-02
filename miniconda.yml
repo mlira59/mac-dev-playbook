@@ -1,0 +1,88 @@
+---
+- name: Set variable
+  set_fact:
+    environments:
+      - name: python_3_9
+        python_version: '3.9'
+        packages: []
+      - name: python_3_10
+        python_version: '3.10'
+        packages: []
+      - name: python_3_11
+        python_version: '3.11'
+        packages: []
+      - name: python_3_12
+        python_version: '3.12'
+        packages: []
+      - name: python_3_13
+        python_version: '3.13'
+        packages:
+          - awscli
+          - black
+          - flake8
+          - httpie
+          - meson
+          - nox
+          - pylint
+          - rust
+      - name: python_3_13_pipx
+        python_version: '3.13'
+        packages:
+          - pipx
+          - tk
+
+- name: Debug environments
+  debug:
+    var: environments
+    verbosity: 2 # Or 3 for even more detail
+
+- name: Check if Conda Environments Exist
+  command: "{{ conda_executable }} env list --json"
+  register: conda_env_list
+  changed_when: false
+  failed_when: false
+  vars:
+    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+
+- name: Create Conda Environments (Idempotent)
+  command: "{{ conda_executable }} create --name {{ item.name }} python={{ item.python_version }} -c conda-forge -y"
+  loop: "{{ environments }}"
+  when: item.name not in (conda_env_list.stdout | from_json | json_query('envs[*]') | map('basename') | list)
+  vars:
+    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+
+- name: Check Installed Packages in Environments
+  command: "{{ conda_executable }} list --name {{ item.name }}"
+  register: conda_pkg_list
+  changed_when: false
+  failed_when: false
+  loop: "{{ environments }}"
+  when: item.packages | length > 0
+  vars:
+    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+
+- name: Install Packages in Environments (Idempotent)
+  include_tasks: install_packages_in_env.yml
+  loop: "{{ environments }}"
+  when: item.packages is defined and item.packages is iterable and item.packages | length > 0
+  vars:
+    env_item: "{{ item }}"
+
+- name: Install asciidoc via pip
+  pip:
+    name: asciidoc
+    virtualenv: /Users/martinlira/miniconda3/envs/python_3_13
+
+#- name: Check Installed Packages in python_3_13_spyder
+#  command: "{{ conda_executable }} list --name python_3_13_spyder"
+#  register: spyder_pkg_list
+#  changed_when: false
+#  failed_when: false
+#  vars:
+#    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+#
+#- name: Ensure Spyder, Tkinter and Tk are installed on python_3_13_spyder (Idempotent)
+#  command: "{{ conda_executable }} install --name python_3_13_spyder spyder tk -c conda-forge -y"
+#  when: "'spyder' not in spyder_pkg_list.stdout or 'tk' not in spyder_pkg_list.stdout"
+#  vars:
+#    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path

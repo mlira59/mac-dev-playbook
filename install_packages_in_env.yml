@@ -1,0 +1,43 @@
+---
+- name: Debug env_item in included tasks
+  debug:
+    var: env_item
+
+- name: Check Installed Packages in {{ env_item.name }}
+  shell: "{{ conda_executable }} list --name {{ env_item.name }} | cut -f 1 -d' '"
+  register: conda_pkg_list
+  changed_when: false
+  failed_when: false
+  vars:
+    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+
+- name: Debug conda_pkg_list
+  debug:
+    var: conda_pkg_list
+
+- name: Install Packages in {{ env_item.name }} (Idempotent)
+  command: "{{ conda_executable }} install --name {{ env_item.name }} {{ package_item }} -c conda-forge -y"
+  loop: "{{ env_item.packages }}"
+  loop_control:
+    loop_var: package_item
+  when: package_item not in (conda_pkg_list.stdout | regex_findall('^\\S+'))
+  vars:
+    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+
+#- name: Check Installed Packages in {{ env_item.name }}
+#  command: "{{ conda_executable }} list --name {{ env_item.name }}"
+#  register: conda_pkg_list
+#  changed_when: falsea
+#  failed_when: false
+#  vars:
+#    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+#
+#- name: Install Packages in {{ env_item.name }} (Idempotent)
+#  command: "{{ conda_executable }} install --name {{ env_item.name }} {{ package_item }} -c conda-forge -y"
+#  loop: "{{ env_item.packages }}"
+#  loop_control:
+#    loop_var: package_item
+#  when: package_item not in conda_pkg_list.stdout
+#  vars:
+#    conda_executable: /Users/martinlira/miniconda3/condabin/conda # Adjust to your conda path
+#

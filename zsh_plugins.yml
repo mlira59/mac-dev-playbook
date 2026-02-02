@@ -1,0 +1,10 @@
+---
+- name: Add ZSH plugin code
+  ansible.builtin.blockinfile:
+    path: ~/.zshrc
+    create: yes
+    mode: '0644'
+    block: |
+      source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+    marker: "# {mark} ANSIBLE MANAGED BLOCK zsh_plugin_code"
+...

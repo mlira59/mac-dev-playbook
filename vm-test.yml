@@ -1,0 +1,91 @@
+---
+# Simplified playbook for VM testing
+# Run with: ansible-playbook vm-test.yml -i vm-test/inventory
+
+# First play: Install Xcode CLI tools (no fact gathering needed)
+- name: Bootstrap - Install Xcode Command Line Tools
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Check if Xcode CLI tools are installed
+      raw: xcode-select -p 2>/dev/null
+      register: xcode_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Xcode Command Line Tools via softwareupdate
+      raw: |
+        touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+        PROD=$(softwareupdate -l 2>/dev/null | grep -o 'Command Line Tools for Xcode-[0-9.]*' | head -1)
+        if [ -n "$PROD" ]; then
+          softwareupdate -i "$PROD" --verbose
+        else
+          softwareupdate -i -a
+        fi
+        rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+      when: xcode_check.rc != 0
+      register: xcode_install
+
+    - name: Wait for Xcode CLI tools to be available
+      raw: xcode-select -p 2>/dev/null
+      register: xcode_verify
+      until: xcode_verify.rc == 0
+      retries: 60
+      delay: 10
+      when: xcode_check.rc != 0
+
+    - name: Accept Xcode license
+      raw: sudo xcodebuild -license accept 2>/dev/null || true
+      when: xcode_check.rc != 0
+
+# Second play: Main configuration (with fact gathering)
+- name: Configure macOS test VM
+  hosts: all
+  vars:
+    # Override vault variables with empty defaults for VM testing
+    vault_ansible_become_password: ""
+    vault_mas_email: ""
+    vault_mas_password: ""
+
+  vars_files:
+    - default.config.yml
+
+  pre_tasks:
+    - name: Include playbook configuration.
+      include_vars: "{{ item }}"
+      with_fileglob:
+        - "{{ playbook_dir }}/config.yml"
+      tags: ['always']
+      ignore_errors: true
+
+  roles:
+    - role: geerlingguy.mac.homebrew
+      tags: ['homebrew']
+    - role: geerlingguy.dotfiles
+      when: configure_dotfiles
+      tags: ['dotfiles']
+    - role: geerlingguy.mac.dock
+      when: configure_dock
+      tags: ['dock']
+
+  tasks:
+    - import_tasks: tasks/terminal.yml
+      when: configure_terminal
+      tags: ['terminal']
+
+    - import_tasks: tasks/osx.yml
+      when: configure_osx
+      tags: ['osx']
+
+    - import_tasks: tasks/extra-packages.yml
+      tags: ['extra-packages']
+
+    - name: Run post-provision task files in a block.
+      tags: ['post']
+      block:
+        - name: Run configured post-provision ansible task files.
+          include_tasks: "{{ outer_item }}"
+          loop_control:
+            loop_var: outer_item
+          with_fileglob: "{{ post_provision_tasks | default(omit) }}"

@@ -1,0 +1,64 @@
+---
+# Skip this file for VM testing - only run on physical machines
+- name: Skip vagrant setup on test VMs
+  meta: end_play
+  when: "'macos-dev-test' in inventory_hostname"
+
+- name: Gather facts
+  ansible.builtin.setup:
+
+- name: Debug - print ansible_facts
+  ansible.builtin.debug:
+    var: ansible_facts
+
+- name: Create user vagrant and deploy SSH public key
+  block:
+    - name: Create user vagrant
+      ansible.builtin.user:
+        name: vagrant
+        create_home: true
+        shell: /bin/zsh
+        password: 'vagrant'
+
+    - name: Append Public Key
+      ansible.posix.authorized_key:
+        user: vagrant
+        key: "{{ lookup('file', '/opt/vagrant/embedded/gems/gems/vagrant-2.4.1/keys/vagrant.pub') }}"
+        state: present
+        manage_dir: true
+
+    - name: Add user to com.apple.access_ssh
+      ansible.builtin.command:
+        cmd: dseditgroup -o edit -a vagrant -t user com.apple.access_ssh
+
+    - name: Ensure ~vagrant/.zshrc exists
+      ansible.builtin.file:
+        path: ~vagrant/.zshrc
+        state: touch
+        owner: vagrant
+        mode: '0600'
+
+    - name: Ensure ~vagrant/.config exists
+      ansible.builtin.file:
+        path: ~vagrant/.config
+        state: directory
+        owner: vagrant
+        mode: '0700'
+
+    - name: Download Starship Preset
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/starship/starship/master/docs/public/presets/toml/pastel-powerline.toml"
+        dest: ~vagrant/.config/starship.toml
+        mode: '0644'
+        owner: vagrant
+
+    - name: Enable starship in zshrc
+      ansible.builtin.blockinfile:
+        path: ~vagrant/.zshrc
+        block: |
+          #Star Ship
+          eval "$(starship init zsh)"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK starship"
+  become: true
+  when: ansible_facts.processor is defined and (ansible_facts.processor | regex_search('virtual') | default(false))
+...

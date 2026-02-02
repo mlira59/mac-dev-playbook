@@ -23,7 +23,7 @@ sudoers_custom_config: ''
 #   %admin ALL=(ALL) NOPASSWD: ALL
 
 dotfiles_repo: "https://github.com/mlira59/dotfiles.git"
-dotfiles_repo_version: work
+dotfiles_repo_version: master
 dotfiles_repo_accept_hostkey: true
 dotfiles_repo_local_destination: ~/Development/GitHub/dotfiles
 dotfiles_files:
@@ -104,6 +104,14 @@ pip_packages: []
 # - name: mkdocs
 #   state: present # present/absent/latest, default: present
 #   version: "0.16.3" # default: N/A
+
+# Set to 'true' to configure VS Code.
+configure_vscode: false
+vscode_extensions: []
+# - ms-python.python
+# - ms-vscode.vscode-typescript-next
+# - github.copilot
+vscode_copy_settings: false  # Copy settings.json from files/exports/vscode/
 
 # Set to 'true' to configure Sublime Text.
 configure_sublime: false

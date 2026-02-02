@@ -1,0 +1,22 @@
+---
+# - name: Install Spyder - for school
+#   community.general.pipx:
+#     name: {{ item }}
+#     state: latest
+#     executable: /opt/homebrew/bin/pipx
+#     install_deps: true
+#   with_items:
+#     - spyder
+#     - autoflake8
+#
+# - name: Add Spyder init stuff to zshrc
+#   ansible.builtin.blockinfile:
+#     path: ~/.zshrc
+#     block: |
+#       PATH=${HOME}/.local/bin:${PATH}
+#     marker: "# {mark} ANSIBLE MANAGED BLOCK spyder"
+- name: Install Spyder - for school with uv
+  ansible.builtin.command:
+    cmd:
+      uv tool install spyder
+...

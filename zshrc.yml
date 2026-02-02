@@ -1,0 +1,10 @@
+---
+- name: Add ssh-copy-id binary directory to PATH
+  ansible.builtin.blockinfile:
+    path: ~/.zshrc
+    create: yes
+    mode: '0644'
+    block: |
+      export PATH="/opt/homebrew/opt/ssh-copy-id/bin:$PATH";
+    marker: "# {mark} ANSIBLE MANAGED BLOCK ssh_copy_id"
+...

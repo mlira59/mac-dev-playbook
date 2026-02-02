@@ -1,0 +1,36 @@
+---
+- name: Ensure ~/.zshrc exists
+  ansible.builtin.file:
+    path: ~/.zshrc
+    state: touch
+    mode: '0644'
+
+- name: Ensure ~/.config exists
+  ansible.builtin.file:
+    path: ~/.config
+    state: directory
+    mode: '0755'
+
+- name: Download Starship Preset
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/starship/starship/master/docs/public/presets/toml/pastel-powerline.toml"
+    dest: ~/.config/starship.toml
+    mode: '0644'
+
+- name: Add Homebrew to PATH in zshrc
+  ansible.builtin.blockinfile:
+    path: ~/.zshrc
+    insertbefore: BOF
+    block: |
+      # Homebrew PATH (Apple Silicon)
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK homebrew"
+
+- name: Enable starship in zshrc
+  ansible.builtin.blockinfile:
+    path: ~/.zshrc
+    block: |
+      #Star Ship
+      eval "$(starship init zsh)"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK starship"
+...

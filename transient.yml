@@ -1,0 +1,17 @@
+---
+- name: Configure host.
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Task before included tasks
+      debug:
+        msg: "Executing task before included tasks"
+
+    - name: Include tasks from tasks_to_include.yml
+      include_tasks: miniconda.yml
+
+    - name: Task after included tasks
+      debug:
+        msg: "Executing task after included tasks"

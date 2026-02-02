@@ -1,0 +1,52 @@
+---
+- name: Download Starship install script
+  ansible.builtin.get_url:
+    url: "https://starship.rs/install.sh"
+    dest: /tmp/install_starship.sh
+    mode: '0755'
+
+- name: Execute Starship install script
+  ansible.builtin.script:
+    cmd: /tmp/install_starship.sh --bin-dir=/usr/local/bin --yes
+  become: true
+
+- name: Ensure ~root/.ssh exists
+  ansible.builtin.file:
+    path: ~root/.ssh
+    state: directory
+    owner: root
+    mode: '0700'
+  become: true
+
+- name: Ensure ~root/.profile exists
+  ansible.builtin.file:
+    path: ~root/.profile
+    state: touch
+    owner: root
+    mode: '0600'
+  become: true
+
+- name: Ensure ~root/.config exists
+  ansible.builtin.file:
+    path: ~root/.config
+    state: directory
+    owner: root
+    mode: '0700'
+  become: true
+
+- name: Download Starship Preset
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/starship/starship/master/docs/public/presets/toml/pastel-powerline.toml"
+    dest: ~root/.config/starship.toml
+    mode: '0644'
+  become: true
+
+- name: Enable starship in zshrc
+  ansible.builtin.blockinfile:
+    path: ~root/.profile
+    block: |
+      # Star Ship
+      eval "$(starship init bash)"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK starship"
+  become: true
+...

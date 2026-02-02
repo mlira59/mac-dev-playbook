@@ -1,0 +1,70 @@
+---
+# VS Code configuration task
+# Installs extensions and copies settings from exported config
+
+- name: Check if VS Code is installed
+  stat:
+    path: /Applications/Visual Studio Code.app
+  register: vscode_app
+
+- name: Set VS Code code command path
+  set_fact:
+    vscode_code_cmd: "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+  when: vscode_app.stat.exists
+
+- name: Check if code command exists
+  stat:
+    path: "{{ vscode_code_cmd }}"
+  register: vscode_code_bin
+  when: vscode_app.stat.exists
+
+- name: Install VS Code extensions
+  command: "{{ vscode_code_cmd }} --install-extension {{ item }}"
+  loop: "{{ vscode_extensions | default([]) }}"
+  register: vscode_ext_install
+  changed_when: "'was successfully installed' in vscode_ext_install.stdout"
+  failed_when: false
+  when:
+    - vscode_app.stat.exists
+    - vscode_code_bin.stat.exists
+    - vscode_extensions is defined
+    - vscode_extensions | length > 0
+
+- name: Ensure VS Code settings directory exists
+  file:
+    path: "{{ ansible_env.HOME }}/Library/Application Support/Code/User"
+    state: directory
+    mode: '0755'
+  when: vscode_app.stat.exists
+
+- name: Check for exported VS Code settings
+  stat:
+    path: "{{ playbook_dir }}/files/exports/vscode/settings.json"
+  register: vscode_exported_settings
+
+- name: Copy exported VS Code settings
+  copy:
+    src: "{{ playbook_dir }}/files/exports/vscode/settings.json"
+    dest: "{{ ansible_env.HOME }}/Library/Application Support/Code/User/settings.json"
+    mode: '0644'
+    backup: yes
+  when:
+    - vscode_app.stat.exists
+    - vscode_exported_settings.stat.exists
+    - vscode_copy_settings | default(false)
+
+- name: Check for exported VS Code keybindings
+  stat:
+    path: "{{ playbook_dir }}/files/exports/vscode/keybindings.json"
+  register: vscode_exported_keybindings
+
+- name: Copy exported VS Code keybindings
+  copy:
+    src: "{{ playbook_dir }}/files/exports/vscode/keybindings.json"
+    dest: "{{ ansible_env.HOME }}/Library/Application Support/Code/User/keybindings.json"
+    mode: '0644'
+    backup: yes
+  when:
+    - vscode_app.stat.exists
+    - vscode_exported_keybindings.stat.exists
+    - vscode_copy_settings | default(false)

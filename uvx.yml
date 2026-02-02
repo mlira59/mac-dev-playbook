@@ -1,0 +1,16 @@
+---
+- name: Install with UVX - attempt to replace pipx
+  ansible.builtin.command:
+    cmd:
+      uv tool install {{ item }}
+  loop:
+    - asciidoc
+    - awscli
+    - black
+    - flake8
+    - httpie
+    - meson
+    - nox
+    - pylint
+    - rust
+...

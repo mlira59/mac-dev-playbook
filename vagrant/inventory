@@ -1,0 +1,10 @@
+# Ansible inventory for macOS test VM
+# Created for mac-dev-playbook testing
+
+[test]
+macos-dev-test ansible_host=10.211.55.26 ansible_user=testuser ansible_password=testpass
+
+[test:vars]
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ansible_become_password=testpass

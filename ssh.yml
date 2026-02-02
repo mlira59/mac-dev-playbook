@@ -1,0 +1,7 @@
+---
+- name: Ensure ~/.ssh exists
+  ansible.builtin.file:
+    path: ~/.ssh
+    state: directory
+    mode: '0700'
+...

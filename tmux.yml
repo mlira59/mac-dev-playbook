@@ -1,0 +1,15 @@
+---
+- name: Ensure directory ~/.tmux is present
+  ansible.builtin.file:
+    path: ~/.tmux
+    state: directory
+    owner: "{{ lookup('ansible.builtin.env', 'USER', default=undef()) }}"
+    mode: '0700'
+
+- name: Ensure TMUX is set up
+  ansible.builtin.git:
+    repo: https://github.com/mlira59/.tmux.git
+    dest: ~/.tmux
+    single_branch: true
+    version: work
+...

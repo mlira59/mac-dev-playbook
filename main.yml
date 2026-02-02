@@ -12,6 +12,17 @@
         - "{{ playbook_dir }}/config.yml"
       tags: ['always']
 
+    - name: Include group variables.
+      include_vars: "{{ playbook_dir }}/group_vars/all/vars.yml"
+      tags: ['always']
+
+    - name: Include vault secrets if available.
+      include_vars: "{{ item }}"
+      with_fileglob:
+        - "{{ playbook_dir }}/group_vars/all/vault.yml"
+      tags: ['always']
+      no_log: true
+
   roles:
     - role: elliotweiser.osx-command-line-tools
     - role: geerlingguy.mac.homebrew
@@ -45,6 +56,10 @@
     - import_tasks: tasks/sublime-text.yml
       when: configure_sublime
       tags: ['sublime-text']
+
+    - import_tasks: tasks/vscode.yml
+      when: configure_vscode
+      tags: ['vscode']
 
     - name: Run post-provision task files in a block.
       tags: ['post']

@@ -1,0 +1,16 @@
+---
+- name: Conda Environment Test
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Create Conda Environment (Test)
+      command: "{{ conda_executable }} create --name {{ item.name }} python={{ item.python_version }} -c conda-forge -y"
+      loop: "{{ environments }}"
+      vars:
+        conda_executable: /opt/homebrew/bin/conda
+        environments:
+          - name: python_3_10
+            python_version: '3.10'
+            packages: []

@@ -1,0 +1,84 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile for macOS test VM
+# Used for testing the mac-dev-playbook before deploying to real machines
+
+VAGRANTFILE_API_VERSION = "2"
+
+# VM Configuration
+VM_NAME = "macos-dev-test"
+VM_MEMORY = 8192
+VM_CPUS = 4
+SSH_USERNAME = "testuser"
+SSH_PASSWORD = "testpass"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # Use the Packer-built box or download from your box repository
+  # After running `make vm-build`, update this path to point to your box
+  config.vm.box = "macos-test-sequoia"
+
+  # If using a local box file built by Packer:
+  # config.vm.box_url = "file://#{File.dirname(__FILE__)}/../packer/output/macos-test-sequoia/macos-test-sequoia.box"
+
+  config.vm.hostname = VM_NAME
+
+  # Disable default synced folder (not well supported on macOS guests)
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  # SSH configuration
+  config.ssh.username = SSH_USERNAME
+  config.ssh.password = SSH_PASSWORD
+  config.ssh.insert_key = true
+
+  # Parallels provider configuration
+  config.vm.provider "parallels" do |prl|
+    prl.name = VM_NAME
+    prl.memory = VM_MEMORY
+    prl.cpus = VM_CPUS
+    prl.update_guest_tools = true
+
+    # Run headless for automated testing
+    prl.customize ["set", :id, "--startup-view", "headless"]
+
+    # Optimize for development
+    prl.customize ["set", :id, "--adaptive-hypervisor", "on"]
+  end
+
+  # Network configuration - use DHCP for simplicity
+  config.vm.network "private_network", type: "dhcp"
+
+  # Optional: Forward SSH port explicitly
+  # config.vm.network "forwarded_port", guest: 22, host: 2222
+
+  # Shell provisioner for initial setup
+  config.vm.provision "shell", inline: <<-SHELL
+    echo "Verifying SSH access and sudo..."
+    whoami
+    sudo whoami
+    echo "VM is ready for Ansible provisioning."
+  SHELL
+
+  # Ansible provisioner - runs the main playbook
+  # Note: This requires ansible to be installed on the host
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "../main.yml"
+    ansible.become = true
+    ansible.compatibility_mode = "2.0"
+
+    # Use vault if available
+    if File.exist?("../group_vars/all/vault.yml")
+      ansible.ask_vault_pass = true
+    end
+
+    ansible.extra_vars = {
+      ansible_python_interpreter: "/usr/bin/python3"
+    }
+
+    # Limit what gets installed in test VM (optional)
+    # ansible.tags = ["homebrew", "dotfiles"]
+
+    # Skip certain tags in test environment
+    # ansible.skip_tags = ["mas"]
+  end
+end
