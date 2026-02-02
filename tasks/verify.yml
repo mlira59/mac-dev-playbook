@@ -1,0 +1,137 @@
+---
+# Verification tasks to confirm playbook succeeded
+# Run with: ansible-playbook tasks/verify.yml
+
+- name: Verify Installation
+  hosts: all
+  gather_facts: true
+
+  vars:
+    # Packages to verify
+    verify_packages:
+      - git
+      - gh
+      - starship
+      - tmux
+    # Dotfiles to verify
+    verify_dotfiles:
+      - ~/.gitignore
+      - ~/.inputrc
+
+  tasks:
+    - name: Display verification header
+      debug:
+        msg: "=== Mac Development Environment Verification ==="
+
+    - name: Check Homebrew is installed
+      command: brew --version
+      register: brew_version
+      changed_when: false
+      failed_when: false
+
+    - name: Check expected Homebrew packages are installed
+      command: "brew list {{ item }}"
+      loop: "{{ verify_packages }}"
+      register: brew_packages
+      changed_when: false
+      failed_when: false
+
+    - name: Check dotfiles are present
+      stat:
+        path: "{{ item }}"
+      loop: "{{ verify_dotfiles }}"
+      register: dotfiles_stat
+
+    - name: Check shell configuration
+      stat:
+        path: ~/.zshrc
+      register: zshrc_stat
+
+    - name: Check if starship is in zshrc
+      command: grep -q "starship init" ~/.zshrc
+      register: starship_check
+      changed_when: false
+      failed_when: false
+      when: zshrc_stat.stat.exists
+
+    - name: Check conda installation
+      stat:
+        path: "{{ ansible_env.HOME }}/miniforge3/condabin/conda"
+      register: conda_miniforge
+
+    - name: Check miniconda installation
+      stat:
+        path: "{{ ansible_env.HOME }}/miniconda3/condabin/conda"
+      register: conda_miniconda
+
+    - name: Set conda status
+      set_fact:
+        conda_installed: "{{ conda_miniforge.stat.exists or conda_miniconda.stat.exists }}"
+
+    - name: Check VS Code installation
+      stat:
+        path: /Applications/Visual Studio Code.app
+      register: vscode_app
+
+    - name: Check Emacs installation
+      command: which emacs
+      register: emacs_check
+      changed_when: false
+      failed_when: false
+
+    - name: Compile verification results
+      set_fact:
+        verification_results:
+          homebrew: "{{ 'OK' if brew_version.rc == 0 else 'FAILED' }}"
+          packages: "{{ brew_packages.results | map(attribute='item') | zip(brew_packages.results | map(attribute='rc')) | map('join', ': ') | list }}"
+          dotfiles: "{{ dotfiles_stat.results | map(attribute='item') | zip(dotfiles_stat.results | map(attribute='stat.exists')) | map('join', ': ') | list }}"
+          zshrc: "{{ 'EXISTS' if zshrc_stat.stat.exists else 'MISSING' }}"
+          starship_configured: "{{ 'YES' if starship_check.rc | default(1) == 0 else 'NO' }}"
+          conda: "{{ 'INSTALLED' if conda_installed else 'NOT FOUND' }}"
+          vscode: "{{ 'INSTALLED' if vscode_app.stat.exists else 'NOT FOUND' }}"
+          emacs: "{{ 'INSTALLED' if emacs_check.rc == 0 else 'NOT FOUND' }}"
+
+    - name: Display verification summary
+      debug:
+        msg: |
+
+          ═══════════════════════════════════════════════════
+                    VERIFICATION SUMMARY
+          ═══════════════════════════════════════════════════
+
+          CORE COMPONENTS
+          ───────────────
+          Homebrew:     {{ verification_results.homebrew }}
+          Conda:        {{ verification_results.conda }}
+
+          APPLICATIONS
+          ────────────
+          VS Code:      {{ verification_results.vscode }}
+          Emacs:        {{ verification_results.emacs }}
+
+          SHELL CONFIGURATION
+          ───────────────────
+          .zshrc:            {{ verification_results.zshrc }}
+          Starship prompt:   {{ verification_results.starship_configured }}
+
+          HOMEBREW PACKAGES
+          ─────────────────
+          {% for pkg in verification_results.packages %}
+          {{ pkg | replace(': 0', ': OK') | replace(': 1', ': MISSING') }}
+          {% endfor %}
+
+          DOTFILES
+          ────────
+          {% for df in verification_results.dotfiles %}
+          {{ df | replace(': True', ': OK') | replace(': False', ': MISSING') }}
+          {% endfor %}
+
+          ═══════════════════════════════════════════════════
+
+    - name: Set overall status
+      set_fact:
+        all_passed: "{{ brew_version.rc == 0 }}"
+
+    - name: Final status
+      debug:
+        msg: "{{ 'All core checks PASSED' if all_passed else 'Some checks FAILED - review above' }}"
