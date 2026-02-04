@@ -28,3 +28,4 @@ Notes
 
 # Ansible cache
 .ansible/
+__pycache__

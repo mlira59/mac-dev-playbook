@@ -2,10 +2,14 @@
 # Orchestrates Ansible, Packer, and Vagrant for environment setup and testing
 
 .PHONY: help setup setup-deps setup-quick setup-tags setup-check \
+        install install-noninteractive \
         export export-homebrew export-macos export-vscode export-conda export-emacs diff \
+        sync sync-auto \
         lint syntax-check \
         test vm-init vm-build vm-create vm-destroy vm-provision vm-verify vm-ssh vm-status vm-halt vm-snapshot vm-restore \
+        vm-provision-bootstrap test-bootstrap sync-test \
         vault-create vault-edit vault-view vault-rekey \
+        weekly-install weekly-uninstall weekly-status \
         clean update-roles info
 
 # Default target
@@ -82,6 +86,20 @@ setup-check: setup-deps ## Dry run to preview changes
 	$(ANSIBLE_PLAYBOOK) main.yml --ask-become-pass --check --diff
 
 # ============================================================================
+# INSTALL TARGETS (full from-scratch setup)
+# ============================================================================
+
+install: ## Full install from scratch (bootstrap + playbook, interactive)
+	@echo "$(GREEN)Running full install (interactive)...$(NC)"
+	@chmod +x $(SCRIPTS_DIR)/install.sh
+	./$(SCRIPTS_DIR)/install.sh
+
+install-noninteractive: ## Full install for VMs/CI (no prompts)
+	@echo "$(GREEN)Running full install (non-interactive)...$(NC)"
+	@chmod +x $(SCRIPTS_DIR)/install.sh
+	./$(SCRIPTS_DIR)/install.sh --noninteractive
+
+# ============================================================================
 # EXPORT TARGETS
 # ============================================================================
 
@@ -111,6 +129,15 @@ export-conda: ## Export Conda environments
 export-emacs: ## Export Emacs packages
 	@chmod +x $(SCRIPTS_DIR)/export-emacs.sh
 	./$(SCRIPTS_DIR)/export-emacs.sh
+
+sync: ## Sync system state into config.yml, export files, and optionally commit
+	@echo "$(GREEN)Starting configuration sync...$(NC)"
+	@chmod +x $(SCRIPTS_DIR)/sync.sh
+	./$(SCRIPTS_DIR)/sync.sh
+
+sync-auto: ## Sync system state non-interactively (no prompts)
+	@chmod +x $(SCRIPTS_DIR)/sync.sh
+	./$(SCRIPTS_DIR)/sync.sh --auto
 
 diff: ## Show configuration drift between system and repo
 	@echo "$(GREEN)Checking for configuration drift...$(NC)"
@@ -195,6 +222,17 @@ vm-snapshot: ## Create VM snapshot
 vm-restore: ## Restore VM snapshot
 	cd $(VAGRANT_DIR) && $(VAGRANT) snapshot restore pre-provision
 
+vm-provision-bootstrap: ## Test full bootstrap flow on VM (rsync + install)
+	@echo "$(GREEN)Running bootstrap test on VM...$(NC)"
+	@chmod +x $(SCRIPTS_DIR)/vm-bootstrap-test.sh
+	./$(SCRIPTS_DIR)/vm-bootstrap-test.sh
+
+test-bootstrap: vm-create vm-provision-bootstrap vm-verify vm-destroy ## Full bootstrap test cycle: create -> bootstrap -> verify -> destroy
+	@echo "$(GREEN)Full bootstrap test cycle completed successfully!$(NC)"
+
+sync-test: sync-auto vm-destroy vm-create vm-provision vm-verify ## Sync config then run full VM test cycle
+	@echo "$(GREEN)Sync + test cycle completed successfully!$(NC)"
+
 # ============================================================================
 # SECRETS MANAGEMENT
 # ============================================================================
@@ -241,6 +279,45 @@ vault-rekey: ## Change vault password
 # ============================================================================
 # MAINTENANCE
 # ============================================================================
+
+# ============================================================================
+# WEEKLY AUTOMATION
+# ============================================================================
+
+LAUNCHD_PLIST := com.mlira.mac-dev-playbook.sync
+LAUNCHD_SRC := files/launchd/$(LAUNCHD_PLIST).plist
+LAUNCHD_DST := $(HOME)/Library/LaunchAgents/$(LAUNCHD_PLIST).plist
+
+weekly-install: ## Install weekly sync launchd job (Mondays at 9 AM)
+	@echo "$(GREEN)Installing weekly sync job...$(NC)"
+	@mkdir -p $(HOME)/Library/LaunchAgents
+	cp $(LAUNCHD_SRC) $(LAUNCHD_DST)
+	launchctl load $(LAUNCHD_DST)
+	@echo "$(GREEN)Weekly sync installed. Next run: Monday at 9:00 AM.$(NC)"
+	@echo "  Trigger manually: launchctl start $(LAUNCHD_PLIST)"
+	@echo "  View logs: tail -f /tmp/mac-dev-playbook-sync.log"
+
+weekly-uninstall: ## Remove weekly sync launchd job
+	@echo "$(GREEN)Removing weekly sync job...$(NC)"
+	launchctl unload $(LAUNCHD_DST) 2>/dev/null || true
+	rm -f $(LAUNCHD_DST)
+	@echo "$(GREEN)Weekly sync removed.$(NC)"
+
+weekly-status: ## Show weekly sync job status and last log
+	@echo "$(CYAN)Weekly Sync Status$(NC)"
+	@echo "$(CYAN)==================$(NC)"
+	@if [ -f $(LAUNCHD_DST) ]; then \
+		echo "  Job: $(GREEN)installed$(NC)"; \
+		launchctl list | grep $(LAUNCHD_PLIST) || echo "  $(YELLOW)Not currently loaded$(NC)"; \
+	else \
+		echo "  Job: $(YELLOW)not installed$(NC) (run 'make weekly-install')"; \
+	fi
+	@echo ""
+	@echo "$(CYAN)Last stdout:$(NC)"
+	@tail -20 /tmp/mac-dev-playbook-sync.log 2>/dev/null || echo "  No log file found."
+	@echo ""
+	@echo "$(CYAN)Last stderr:$(NC)"
+	@tail -10 /tmp/mac-dev-playbook-sync.err 2>/dev/null || echo "  No error log found."
 
 clean: ## Clean temporary files
 	@echo "$(GREEN)Cleaning up...$(NC)"
