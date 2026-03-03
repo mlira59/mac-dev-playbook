@@ -176,7 +176,15 @@ vm-init: ## Initialize Packer plugins
 vm-build: vm-init ## Build macOS test VM with Packer (takes ~30 min)
 	@echo "$(GREEN)Building macOS test VM...$(NC)"
 	@echo "$(YELLOW)This will take approximately 30 minutes.$(NC)"
-	cd $(PACKER_DIR) && $(PACKER) build .
+	@echo "$(YELLOW)Setting up Parallels NAT forwarding (macOS Sequoia TCC workaround)...$(NC)"
+	@prlsrvctl net set Shared --nat-tcp-del packer_ssh 2>/dev/null || true
+	@prlsrvctl net set Shared --nat-tcp-add packer_ssh,22222,10.211.55.100,22
+	@echo "$(GREEN)NAT rule: localhost:22222 -> 10.211.55.100:22$(NC)"
+	cd $(PACKER_DIR) && $(PACKER) build . ; \
+		EXIT_CODE=$$? ; \
+		prlsrvctl net set Shared --nat-tcp-del packer_ssh 2>/dev/null || true ; \
+		echo "$(GREEN)NAT rule cleaned up.$(NC)" ; \
+		exit $$EXIT_CODE
 	@echo "$(GREEN)VM build complete.$(NC)"
 
 vm-create: ## Create/start test VM from built image

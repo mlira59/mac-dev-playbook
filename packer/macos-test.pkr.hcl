@@ -1,14 +1,14 @@
 // macOS Test VM build configuration
-// Based on patterns from packer-examples/macos
+// Boot sequence aligned with Parallels packer-examples for Sequoia 15.4+
+// Ref: https://github.com/Parallels/packer-examples/blob/main/macos/
 
 source "parallels-ipsw" "macos" {
   output_directory = local.output_dir
 
-  // OCR-based boot sequence for automated macOS setup
-  // This sequence navigates the macOS Setup Assistant automatically
+  // OCR-based boot sequence for automated macOS Setup Assistant navigation
 
   boot_screen_config {
-    boot_command     = ["<wait1s><enter>"]
+    boot_command     = ["<wait2s><enter>"]
     screen_name      = "Empty"
     matching_strings = []
   }
@@ -18,14 +18,26 @@ source "parallels-ipsw" "macos" {
     matching_strings = ["Get Started"]
   }
   boot_screen_config {
+    boot_command     = ["<wait1s><enter>"]
+    screen_name      = "GetStarted2"
+    matching_strings = ["hola"]
+  }
+  boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "Language"
-    matching_strings = ["English", "Language"]
+    matching_strings = ["English", "Language", "Australia", "India"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "Country"
     matching_strings = ["Select Your Country or Region"]
+  }
+  // Sequoia 15.4+ replaced "Migration Assistant" with "Transfer Your Data"
+  // 4 tabs to "Set up as new", space to select, 2 tabs to Continue, space to click
+  boot_screen_config {
+    boot_command     = ["<tab><tab><tab><tab><spacebar><tab><tab><spacebar>"]
+    screen_name      = "TransferData"
+    matching_strings = ["transfer", "information"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
@@ -35,42 +47,45 @@ source "parallels-ipsw" "macos" {
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "Accessibility"
-    matching_strings = ["Accessibility", "Vision", "Hearing"]
+    matching_strings = ["Accessibility", "Vision", "Hearing", "Motor", "Cognitive"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "DataAndPrivacy"
-    matching_strings = ["Data", "Privacy"]
+    matching_strings = ["Data", "Privacy", "This icon appears"]
+  }
+  // Sequoia 15.4+: "Create a Mac Account" (was "Create a Computer Account")
+  // Password may get corrupted by tab cycling; we fix it later via dscl in Terminal
+  boot_screen_config {
+    boot_command     = ["${local.ssh_username}<tab><tab>${local.ssh_password}<tab>${local.ssh_password}<tab><tab><tab><tab><spacebar>"]
+    screen_name      = "CreateAccount"
+    matching_strings = ["Create a Mac Account", "The password you create here"]
+  }
+  // Sequoia 15.4+ needs Ctrl+F7 to enable Full Keyboard Access before Sign In screens
+  boot_screen_config {
+    boot_command     = ["<leftCtrlOn><f7><leftCtrlOff><wait1s><leftShiftOn><tab><leftShiftOff><spacebar>"]
+    screen_name      = "SignInToApple"
+    matching_strings = ["Sign in to your apple", "Sign in to use iCloud"]
   }
   boot_screen_config {
-    boot_command     = ["<tab><tab><tab><spacebar>"]
-    screen_name      = "MigrationAssistant"
-    matching_strings = ["Migration Assistant", "From a Mac"]
-  }
-  boot_screen_config {
-    boot_command     = ["<leftShiftOn><tab><tab><leftShiftOff><spacebar>"]
+    boot_command     = ["<leftCtrlOn><f7><leftCtrlOff><wait1s><leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "SignInWithApple"
     matching_strings = ["Sign in with your apple", "Sign in to use iCloud"]
   }
   boot_screen_config {
     boot_command     = ["<tab><spacebar>"]
     screen_name      = "SignInWithApplePopup"
-    matching_strings = ["Are you sure you want to skip"]
+    matching_strings = ["Are you sure you want to skip", "signing in with an Apple"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar><wait1s><tab><spacebar>"]
-    screen_name      = "TermsAndConditions"
-    matching_strings = ["Terms and Conditions"]
-  }
-  boot_screen_config {
-    boot_command     = ["${local.ssh_username}<tab><tab>${local.ssh_password}<tab>${local.ssh_password}<tab><tab><tab><spacebar>"]
-    screen_name      = "CreateAccount"
-    matching_strings = ["Create a Computer Account"]
+    screen_name      = "TermsAndConditionsUS"
+    matching_strings = ["Terms and Conditions", "macOS Software License Agreement"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar><wait2s><tab><spacebar>"]
     screen_name      = "LocationServices"
-    matching_strings = ["Enable Location Services"]
+    matching_strings = ["Enable Location Services", "About Location Services"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
@@ -80,59 +95,75 @@ source "parallels-ipsw" "macos" {
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "Analytics"
-    matching_strings = ["Share Mac Analytics"]
+    matching_strings = ["Share Mac Analytics with Apple"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "ScreenTime"
-    matching_strings = ["Screen Time"]
+    matching_strings = ["Screen Time", "Get insights about your"]
   }
   boot_screen_config {
     boot_command     = ["<tab><spacebar><tab><tab><tab><spacebar>"]
     screen_name      = "Siri"
-    matching_strings = ["Siri"]
+    matching_strings = ["Siri", "Siri helps you get things done"]
   }
   boot_screen_config {
     boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
     screen_name      = "Looks"
-    matching_strings = ["Choose your look"]
+    matching_strings = ["Choose your look", "Select an appearance"]
   }
-  // Enable SSH via System Settings
+  boot_screen_config {
+    boot_command     = ["<leftShiftOn><tab><leftShiftOff><spacebar>"]
+    screen_name      = "Update"
+    matching_strings = ["Update Mac Automatically"]
+  }
+  boot_screen_config {
+    boot_command     = ["<spacebar>"]
+    screen_name      = "WelcomeToMac"
+    matching_strings = ["Welcome to Mac", "continue"]
+  }
+  // Open Terminal via Finder Go-to-Folder shortcut
   boot_screen_config {
     boot_command = [
-      "<leftCtrlOn><f7><leftCtrlOff>",
-      "<leftSuperOn><spacebar><leftSuperOff>System<spacebar>Settings<enter><wait5s>",
-      "<up><wait><tab><wait><leftShiftOn><tab><tab><tab><tab><leftShiftOff><spacebar>",
+      "<leftShiftOn><leftSuperOn>G<leftSuperOff><leftShiftOff>/Applications/Utilities/Terminal.app<enter><leftSuperOn>o<leftSuperOff>",
     ]
-    screen_name      = "Desktop"
-    matching_strings = ["Finder", "Go"]
+    screen_name       = "Desktop"
+    matching_strings  = ["Finder", "Go"]
+    execute_only_once = true
   }
+  // Configure sudo, reset password (may be corrupted from CreateAccount tab cycling),
+  // enable SSH with password auth, and set static IP for NAT forwarding
   boot_screen_config {
     boot_command = [
-      "<leftShiftOn><tab><tab><tab><tab><tab><tab><leftShiftOff><spacebar>",
-      "<leftSuperOn><spacebar><leftSuperOff>terminal<enter>"
-    ]
-    screen_name      = "Sharing"
-    matching_strings = ["File Sharing", "Remote Login"]
-  }
-  // Configure passwordless sudo and install Parallels Tools
-  boot_screen_config {
-    boot_command = [
+      // Set up passwordless sudo
       "sudo visudo /private/etc/sudoers.d/${local.ssh_username}<enter><wait2s>",
       "${local.ssh_password}<enter><wait2s>",
       "i<wait>${local.ssh_username} ALL = (ALL) NOPASSWD: ALL",
-      "<esc>:wq<enter><wait2s>"
+      "<esc>:wq<enter><wait3s>",
+      // Reset password via dscl (may be corrupted from CreateAccount tab cycling)
+      "sudo dscl . -passwd /Users/${local.ssh_username} '${local.ssh_password}'<enter><wait2s>",
+      // Enable SSH with password auth (write to sshd_config.d so it takes priority over Include)
+      "printf 'PasswordAuthentication yes\\nKbdInteractiveAuthentication yes\\n' | sudo tee /etc/ssh/sshd_config.d/00-packer.conf<enter><wait2s>",
+      "sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist<enter><wait5s>",
+      // Set static IP for Parallels NAT forwarding (bypasses macOS Sequoia TCC Local Network restriction)
+      "sudo networksetup -setmanual Ethernet ${var.vm_static_ip} 255.255.255.0 10.211.55.1<enter><wait5s>",
+      "sudo networksetup -setdnsservers Ethernet 10.211.55.1 8.8.8.8<enter><wait2s>",
     ]
     screen_name      = "Terminal"
-    matching_strings = ["Terminal", "${local.ssh_username}@"]
+    matching_strings = ["Terminal", "${local.ssh_username}@", "macos-test"]
     is_last_screen   = true
   }
 
   boot_wait        = "1s"
-  shutdown_command = "sudo shutdown -h now"
+  shutdown_command  = "sudo shutdown -h now"
   ipsw_url         = var.ipsw_url
+  ipsw_checksum    = var.ipsw_checksum
+  // Connect via localhost NAT forwarding to bypass macOS Sequoia TCC
+  ssh_host         = "127.0.0.1"
+  ssh_port         = var.ssh_forward_port
   ssh_username     = local.ssh_username
   ssh_password     = local.ssh_password
+  ssh_timeout      = "30m"
   vm_name          = local.machine_name
   cpus             = var.vm_specs.cpus
   memory           = var.vm_specs.memory
